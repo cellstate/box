@@ -3,13 +3,15 @@ package main
 import (
 	"bytes"
 	"flag"
+	"io"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/codegangsta/cli"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cellstate/box/commands"
+	"github.com/cellstate/box/command"
 )
 
 func init() {
@@ -29,16 +31,18 @@ func apply(cmd cli.Command) *flag.FlagSet {
 // the following
 func TestMainScenario(t *testing.T) {
 	output := bytes.NewBuffer(nil)
-	commands.Clog.SetOutput(output)
+	mw := io.MultiWriter(output, os.Stderr)
+	command.Clog.SetOutput(mw)
 	app := cli.NewApp()
 
 	//init the boxed project
 	log.Printf("$> box init")
-	set := apply(commands.Init)
+	set := apply(command.Init)
 	err := set.Parse([]string{"-b=abc"})
 	assert.NoError(t, err, "Parsing flags should not return err")
 	ctx := cli.NewContext(app, set, nil)
-	commands.Init.Action(ctx)
+	err = command.InitAction(ctx)
+	assert.NoError(t, err, "Command should not error")
 	assert.Contains(t, output.String(), "abc", "Output should contain bucket uri")
 
 	//push first content

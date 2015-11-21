@@ -5,7 +5,7 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/cellstate/box/commands"
+	"github.com/cellstate/box/command"
 )
 
 func main() {
@@ -15,10 +15,10 @@ func main() {
 	app.Flags = []cli.Flag{}
 
 	app.Commands = []cli.Command{
-		commands.Init,
-		commands.Push,
-		commands.Pull,
-		commands.Rm,
+		command.Init,
+		command.Push,
+		command.Pull,
+		command.Rm,
 	}
 
 	app.Run(os.Args)
