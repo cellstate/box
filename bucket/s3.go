@@ -2,6 +2,8 @@ package bucket
 
 import (
 	"net/url"
+
+	"github.com/cellstate/box/config"
 )
 
 type S3 struct {
@@ -21,4 +23,10 @@ func NewS3(uri string) (*S3, error) {
 
 func (s *S3) Ping() error {
 	return nil
+}
+
+func (s *S3) Config() *config.BucketConfig {
+	return &config.BucketConfig{
+		Endpoint: s.endpoint.String(),
+	}
 }

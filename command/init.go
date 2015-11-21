@@ -7,6 +7,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/cellstate/box/bucket"
+	"github.com/cellstate/box/config"
 )
 
 var InitAction = func(ctx *cli.Context) error {
@@ -30,7 +31,7 @@ var InitAction = func(ctx *cli.Context) error {
 			continue
 		}
 
-		//@todo support multiple buckets, and select one intelligently
+		//@todo support multiple buckets, and select one intelligently instead of the first
 		break
 	}
 
@@ -38,7 +39,10 @@ var InitAction = func(ctx *cli.Context) error {
 		return fmt.Errorf("Failed to setup a bucket with any of the given uris: %v", bucketlist)
 	}
 
-	return nil
+	conf := config.DefaultConfig()
+	conf.Buckets = append(conf.Buckets, b.Config())
+
+	return config.WriteConfig(dir, conf)
 }
 
 var Init = cli.Command{
