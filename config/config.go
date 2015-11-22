@@ -8,6 +8,8 @@ import (
 	"github.com/cellstate/errwrap"
 )
 
+var BoxDirName = ".box"
+
 type BucketConfig struct {
 	Endpoint string `json:"endpoint"`
 }
@@ -22,8 +24,25 @@ func DefaultConfig() *Config {
 	}
 }
 
+func ReadConfig(dir string) (*Config, error) {
+	fpath := filepath.Join(dir, BoxDirName, "config")
+	f, err := os.Open(fpath)
+	if err != nil {
+		return nil, errwrap.Wrapf("Failed to read configuration file in '%s': {{err}}, is it a boxed project?", err, fpath)
+	}
+
+	conf := DefaultConfig()
+	dec := json.NewDecoder(f)
+	err = dec.Decode(&conf)
+	if err != nil {
+		return nil, errwrap.Wrapf("Failed to decode configuration file '%s': {{err}}", err, f.Name())
+	}
+
+	return conf, nil
+}
+
 func WriteConfig(dir string, conf *Config) error {
-	dir = filepath.Join(dir, ".box")
+	dir = filepath.Join(dir, BoxDirName)
 	err := os.MkdirAll(dir, 0777)
 	if err != nil {
 		return errwrap.Wrapf("Failed to mkdir '%s' for config: {{err}}", err, dir)

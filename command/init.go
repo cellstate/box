@@ -8,6 +8,7 @@ import (
 
 	"github.com/cellstate/box/bucket"
 	"github.com/cellstate/box/config"
+	"github.com/cellstate/errwrap"
 )
 
 var InitAction = func(ctx *cli.Context) error {
@@ -17,7 +18,7 @@ var InitAction = func(ctx *cli.Context) error {
 	if dir == "" {
 		dir, err = os.Getwd()
 		if err != nil {
-			return fmt.Errorf("Failed to get working directory: %s", err)
+			return errwrap.Wrapf("Failed to get working directory: {{err}}", err)
 		}
 	}
 
