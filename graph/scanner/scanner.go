@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/cellstate/box/graph"
 	"github.com/cellstate/errwrap"
@@ -60,7 +61,7 @@ func (dir *Dir) Links() ([]graph.Key, error) {
 // changed
 type File struct {
 	hash  []byte
-	parts [][]byte
+	parts [][]byte //@todo; large files can large partlists (200gb files = 24414063 8mb parts = 488mb of ram for hashes)
 }
 
 func (f *File) calcHash() error {
@@ -91,17 +92,19 @@ func (f *File) Links() ([]graph.Key, error) {
 	return keys, nil
 }
 
-// represents a file part
+// represents a file part, can have
+// 0-N sub-parts
 type Part struct {
 	hash  []byte
 	start int64
 	end   int64
 	bits  int
+	sub   []*Part
 }
 
 func (p *Part) Key() graph.Key              { return graph.Key(p.hash) }
-func (p *Part) Links() ([]graph.Key, error) { return []graph.Key{}, nil }
 func (p *Part) Data() ([]byte, error)       { return []byte{}, nil }
+func (p *Part) Links() ([]graph.Key, error) { return []graph.Key{}, nil }
 
 // A scanner for a specific directory, repeated
 // scans of the same root are deterministic. resulting
@@ -132,6 +135,9 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 
 	defer f.Close()
 
+	//@todo we want to split large files further into subtrees to
+	//prevent the overhead of keeping track of parts
+
 	//buffer and sum each byte
 	sha := sha1.New()
 	buff := bufio.NewReader(f)
@@ -160,10 +166,45 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 
 		rs.Roll(b)
 		if rs.OnSplit() {
-			parts = append(parts, &Part{bits: rs.Bits(), start: last, end: pos, hash: sha.Sum(nil)})
+
+			bits := rs.Bits()
+			var sub []*Part
+
+			//@todo the logic below creates
+			//a tree of parts that allows efficient
+			//storage of part lists
+			from := len(parts)
+			for from > 0 && parts[from-1].bits < bits {
+				from--
+			}
+
+			n := len(parts) - from
+			if n > 0 {
+				sub = make([]*Part, n)
+				copied := copy(sub, parts[from:])
+				if copied != n {
+					panic("failed to copy parts to sub part")
+				}
+				parts = parts[:from]
+			}
+
+			part := &Part{
+				bits:  bits,
+				start: last,
+				end:   pos,
+				hash:  sha.Sum(nil),
+				sub:   sub,
+			}
+
+			parts = append(parts, part)
 			sha.Reset()
 			last = pos
 		}
+	}
+
+	for i, part := range parts {
+		s.Printf("found part %d of %s (%x)", i, fi.Name(), part.hash)
+		s.Nodes <- part
 	}
 
 	return parts, nil
@@ -202,7 +243,7 @@ func (s *Scanner) scanDir(dirp string) (*Dir, error) {
 	for _, n := range names {
 		path := filepath.Join(dirh.Name(), n)
 
-		//@todo check index for rapid rescans
+		//@todo check index for rapid rescans?
 
 		fi, err := os.Lstat(path)
 		if err != nil {
@@ -226,12 +267,24 @@ func (s *Scanner) scanDir(dirp string) (*Dir, error) {
 			}
 
 			f := &File{}
-			for i, part := range parts {
+			for _, part := range parts {
 				f.parts = append(f.parts, part.hash)
-
-				s.Printf("found part %d of %s (%x)", i, path, part.hash)
-				s.Nodes <- part
 			}
+
+			//
+			// @todo remove me
+			//
+			var dumpSpans func(s []*Part, indent int)
+			dumpSpans = func(parts []*Part, indent int) {
+				in := strings.Repeat(" ", indent)
+				for _, sp := range parts {
+					s.Printf("%sstart=%d, end=%d (len %d) bits=%d\n", in, sp.start, sp.end, sp.end-sp.start, sp.bits)
+					if len(sp.sub) > 0 {
+						dumpSpans(sp.sub, indent+4)
+					}
+				}
+			}
+			dumpSpans(parts, 0)
 
 			err = f.calcHash()
 			if err != nil {

@@ -16,9 +16,15 @@ limitations under the License.
 package fsreverse
 
 const windowSize = 64
+
+// According to librsync/rollsum.h:
+// "We should make this something other than zero to improve the
+// checksum algorithm: tridge suggests a prime number."
+// apenwarr: I unscientifically tried 0 and 7919, and they both ended up
+// slightly worse than the librsync value of 31 for my arbitrary test data.
 const charOffset = 31
 
-const blobBits = 13
+const blobBits = 13            // 2^13 = 8192 bytes on average
 const blobSize = 1 << blobBits // 8k
 
 type RollSum struct {
@@ -47,11 +53,6 @@ func (rs *RollSum) Roll(ch byte) {
 
 func (rs *RollSum) OnSplit() bool {
 	return (rs.s2 & (blobSize - 1)) == ((^0) & (blobSize - 1))
-}
-
-func (rs *RollSum) OnSplitWithBits(n uint32) bool {
-	mask := (uint32(1) << n) - 1
-	return rs.s2&mask == (^uint32(0))&mask
 }
 
 func (rs *RollSum) Bits() int {
