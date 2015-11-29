@@ -14,6 +14,9 @@ import (
 	"github.com/cellstate/errwrap"
 )
 
+// @todo make sure new (upper) nodes are also send when lower directories are rescanned
+// @todo switch to sha256 for better crypto
+
 // represents a directory, a directory
 // contains 0-N items (dirs or files) it
 // is assumed that the order of items
@@ -167,9 +170,9 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 }
 
 // (re)scan the root directory, recursively calling
-// ScanDir(), depth-first
+// scanDir(), depth-first
 func (s *Scanner) Scan() error {
-	_, err := s.ScanDir(s.root)
+	_, err := s.scanDir(s.root)
 	if err != nil {
 		return err
 	}
@@ -179,7 +182,7 @@ func (s *Scanner) Scan() error {
 
 //recursively scans a given directory depth-first
 //in an memory efficient manner.
-func (s *Scanner) ScanDir(dirp string) (*Dir, error) {
+func (s *Scanner) scanDir(dirp string) (*Dir, error) {
 	dirh, err := os.Open(dirp)
 	if err != nil {
 		return nil, err
@@ -198,6 +201,9 @@ func (s *Scanner) ScanDir(dirp string) (*Dir, error) {
 	dir := &Dir{}
 	for _, n := range names {
 		path := filepath.Join(dirh.Name(), n)
+
+		//@todo check index for rapid rescans
+
 		fi, err := os.Lstat(path)
 		if err != nil {
 			return nil, err
@@ -205,7 +211,7 @@ func (s *Scanner) ScanDir(dirp string) (*Dir, error) {
 
 		if fi.IsDir() {
 			//it is a dir, traverse
-			ndir, err := s.ScanDir(path)
+			ndir, err := s.scanDir(path)
 			if err != nil {
 				return nil, err
 			}

@@ -159,4 +159,25 @@ func TestBottomsUpIndexing(t *testing.T) {
 		}
 	}
 
+	//
+	// @TODO How do we implement a rescan of a subdirectory
+	//
+
+	// //rescanning a change to a subdirectory should send new upper nodes
+	// //as well
+	// writeFileAt(t, filepath.Join(dir, "a", "b", "small_file"), []byte("foo"), 0)
+	// go func() {
+	// 	for n := range s.Nodes {
+	// 		nodes[fmt.Sprintf("%x", n.Key())] = n
+	// 		if len(nodes) == 14 {
+	// 			done <- true
+	// 			return
+	// 		}
+	// 	}
+	// }()
+
+	// err = s.Rescan(filepath.Join(dir, "a", "b"))
+	// assert.NoError(t, err, "Rescanning the filesystem should not fail")
+	// <-done
+
 }

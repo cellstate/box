@@ -1,10 +1,24 @@
 # box
 A rootless client that allows efficient data syncing with a remote server using rsync-like protocol
 
+- [Awesome Data Structures](http://stackoverflow.com/questions/500607/what-are-the-lesser-known-but-useful-data-structures)
+
 On Walking the FS:
 
 - [in c](http://stackoverflow.com/questions/2312110/efficiently-traverse-directory-tree-with-opendir-readdir-and-closedir)
 
+Bloom Filters:
+
+- [in Venti](http://essay.utwente.nl/694/1/scriptie_Lukkien.pdf):
+  Venti uses an in-memory bloom filter to avoid
+having to go to index section disks to determine whether a score is present. This
+is most important for writing new blocks to Venti: new blocks will not be found
+in the index, it would be nice not to have to read the index, which takes a full
+disk seek. A bloom filter can give false positives in the membership test, but not
+false negatives. Therefore, when the bloom filter determines the score is absent,
+it really is absent. When the bloom filter determines the score is present, it may
+be absent after all (this will be realised after having read the index).
+- [calculator](http://hur.st/bloomfilter?n=100000000000000&p=0.01)
 
 On Rsync:
 
@@ -22,4 +36,5 @@ On Dropbox:
 
 Merkle Tree:
 
+- [for syncing state between nodes](http://danieloshea.com/2011/12/07/merkle-tree.html)
 - [Optimization and Hashes](http://crypto.stackexchange.com/questions/9198/efficient-incremental-updates-to-large-merkle-tree)
