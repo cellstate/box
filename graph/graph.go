@@ -7,11 +7,9 @@ type Key []byte
 //to form a DAG (directed) acyclic graph, nodes
 //can have arbritary metadata to allow optmizations
 type Node interface {
-	Link(Node) error //link from this node to another node
-	Key() (Key, error)
-	Metadata() map[string]string
-	Links() ([]Key, error)
-	Data() ([]byte, error)
+	Key() Key              //this nodes graph-unique key
+	Links() ([]Key, error) //node links to other nodes
+	Data() ([]byte, error) //some nodes contain binary data
 }
 
 //a graph that can be compared and serialized

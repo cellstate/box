@@ -1,6 +1,10 @@
 # box
 A rootless client that allows efficient data syncing with a remote server using rsync-like protocol
 
+On Walking the FS:
+
+- [in c](http://stackoverflow.com/questions/2312110/efficiently-traverse-directory-tree-with-opendir-readdir-and-closedir)
+
 
 On Rsync:
 
