@@ -13,19 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package fsreverse
+package scanner
 
-const windowSize = 64
-
-// According to librsync/rollsum.h:
-// "We should make this something other than zero to improve the
-// checksum algorithm: tridge suggests a prime number."
-// apenwarr: I unscientifically tried 0 and 7919, and they both ended up
-// slightly worse than the librsync value of 31 for my arbitrary test data.
-const charOffset = 31
-
+const charOffset = 31            // something other then 0 (apparently a prime), improves checksum algo
 const splitOnes = 13             // how many 1's as lower bits of the sum we consider a split
 const splitSize = 1 << splitOnes // 2^13 = 8192 bytes on average
+const windowSize = 64            // according to bups design document; chosen arbitrarly
 
 type RollSum struct {
 	s1, s2 uint32

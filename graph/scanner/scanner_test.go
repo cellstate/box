@@ -1,4 +1,4 @@
-package fsreverse
+package scanner
 
 import (
 	"fmt"
