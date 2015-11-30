@@ -15,6 +15,10 @@ limitations under the License.
 
 package scanner
 
+import (
+	"log"
+)
+
 const charOffset = 31            // something other then 0 (apparently a prime), improves checksum algo
 const splitOnes = 13             // how many 1's as lower bits of the sum we consider a split
 const splitSize = 1 << splitOnes // 2^13 = 8192 bytes on average
@@ -38,20 +42,28 @@ func (rs *RollSum) add(drop, add uint8) {
 	rs.s2 += rs.s1 - uint32(windowSize)*uint32(drop+charOffset)
 }
 
+//roll the window forward with one byte
 func (rs *RollSum) Roll(ch byte) {
 	rs.add(rs.window[rs.wofs], ch)
 	rs.window[rs.wofs] = ch
 	rs.wofs = (rs.wofs + 1) % windowSize
 }
 
+//returns true when the lowest bits of the
 func (rs *RollSum) OnSplit() bool {
-	return (rs.s2 & (splitSize - 1)) == ((^0) & (splitSize - 1))
+
+	res := (rs.s2 & (splitSize - 1)) == ((^0) & (splitSize - 1))
+	if res == true {
+		log.Printf("%b (%d): %t", rs.s2, splitSize, res)
+	}
+
+	return res
 }
 
-//How many ones in the lower bits
+//How many ones in the lower bits of the sum
 func (rs *RollSum) Bits() int {
 	bits := splitOnes
-	rsum := rs.Digest()
+	rsum := rs.Sum()
 	rsum >>= splitOnes
 	for ; (rsum>>1)&1 != 0; bits++ {
 		rsum >>= 1
@@ -59,6 +71,7 @@ func (rs *RollSum) Bits() int {
 	return bits
 }
 
-func (rs *RollSum) Digest() uint32 {
+//get the checksum for the current window
+func (rs *RollSum) Sum() uint32 {
 	return (rs.s1 << 16) | (rs.s2 & 0xffff)
 }

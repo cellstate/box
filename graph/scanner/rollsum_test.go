@@ -32,7 +32,7 @@ func TestSum(t *testing.T) {
 		for count := offset; count < l; count++ {
 			rs.Roll(buf[count])
 		}
-		return rs.Digest()
+		return rs.Sum()
 	}
 
 	sum1a := sum(0, len(buf))
