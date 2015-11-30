@@ -24,8 +24,8 @@ const windowSize = 64
 // slightly worse than the librsync value of 31 for my arbitrary test data.
 const charOffset = 31
 
-const blobBits = 13            // 2^13 = 8192 bytes on average
-const blobSize = 1 << blobBits // 8k
+const splitOnes = 13             // how many 1's as lower bits of the sum we consider a split
+const splitSize = 1 << splitOnes // 2^13 = 8192 bytes on average
 
 type RollSum struct {
 	s1, s2 uint32
@@ -52,13 +52,14 @@ func (rs *RollSum) Roll(ch byte) {
 }
 
 func (rs *RollSum) OnSplit() bool {
-	return (rs.s2 & (blobSize - 1)) == ((^0) & (blobSize - 1))
+	return (rs.s2 & (splitSize - 1)) == ((^0) & (splitSize - 1))
 }
 
+//How many ones in the lower bits
 func (rs *RollSum) Bits() int {
-	bits := blobBits
+	bits := splitOnes
 	rsum := rs.Digest()
-	rsum >>= blobBits
+	rsum >>= splitOnes
 	for ; (rsum>>1)&1 != 0; bits++ {
 		rsum >>= 1
 	}

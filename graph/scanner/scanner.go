@@ -144,6 +144,7 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 	rs := NewRollsum()
 	pos := int64(0)
 	last := pos
+	fanout := 4
 	for {
 		b, err := buff.ReadByte()
 		if err != nil {
@@ -166,13 +167,33 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 
 		rs.Roll(b)
 		if rs.OnSplit() {
-
 			bits := rs.Bits()
 			var sub []*Part
 
-			//@todo the logic below creates
+			//at this point the lower 13 bits are equal, check for fanout
+			if bits == (splitOnes + fanout) {
+				s.Println("fanout", bits)
+			}
+
+			// [0.0]   4759  (13)
+			// [0.1]   13549 (13)
+			// [0.2]   24111 (13)
+			// [0.3]   25549 (13)
+			// [0.4]   27582 (13)
+			// [0.5]   32703 (13)
+			// [0] 34749 (19) <- not lower then 17
+			// [1.0.1] 43733 (13)
+			// [1.0.2] 47322 (13)
+			// [1.0] 47499 (16) <- lower then 17
+			// [1] 54922 (17)
+			// [2]
+
+			//@todo the logic below N last parts into
+			//into the last Part if the number of 1's
 			//a tree of parts that allows efficient
-			//storage of part lists
+			//storage of part lists, we are still looking
+			//for a way to send (sub)part nodes when they are
+			//formed and not store them in memory
 			from := len(parts)
 			for from > 0 && parts[from-1].bits < bits {
 				from--
@@ -185,9 +206,11 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 				if copied != n {
 					panic("failed to copy parts to sub part")
 				}
+
 				parts = parts[:from]
 			}
 
+			//create the new part
 			part := &Part{
 				bits:  bits,
 				start: last,

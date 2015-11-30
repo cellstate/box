@@ -7,6 +7,12 @@ On Walking the FS:
 
 - [in c](http://stackoverflow.com/questions/2312110/efficiently-traverse-directory-tree-with-opendir-readdir-and-closedir)
 
+On Bup:
+
+- [fanout](https://groups.google.com/forum/#!topic/bup-list/t__sYDK1KkI)
+- [design docs](https://github.com/bup/bup/blob/master/DESIGN)
+
+
 Bloom Filters:
 
 - [in Venti](http://essay.utwente.nl/694/1/scriptie_Lukkien.pdf):
