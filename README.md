@@ -12,7 +12,6 @@ On Bup:
 - [fanout](https://groups.google.com/forum/#!topic/bup-list/t__sYDK1KkI)
 - [design docs](https://github.com/bup/bup/blob/master/DESIGN)
 
-
 Bloom Filters:
 
 - [in Venti](http://essay.utwente.nl/694/1/scriptie_Lukkien.pdf):
@@ -39,6 +38,8 @@ On Dropbox:
 - [reversed engineered](http://archive.hack.lu/2012/Dropbox%20security.pdf)
 - [dropbox's librsync](https://github.com/dropbox/librsync)
 - [inside dropbox](http://cnds.eecs.jacobs-university.de/courses/nds-2013/prodescu-inside-dropbox.pdf)
+- [performance issues](https://www.dropboxforum.com/hc/en-us/community/posts/201241429--OS-X-Dropbox-consuming-a-lot-of-CPU-whenever-any-file-or-folder-is-changed-anywhere)
+- [performance issues on HN](https://news.ycombinator.com/item?id=10652030)
 
 Merkle Tree:
 

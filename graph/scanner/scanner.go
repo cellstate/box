@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/cellstate/box/graph"
 	"github.com/cellstate/errwrap"
@@ -125,42 +124,43 @@ func NewScanner(l *log.Logger, root string) (*Scanner, error) {
 	}, nil
 }
 
-func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
+func (s *Scanner) SplitFile(f *File, p string, fi os.FileInfo) error {
+
+	//@todo, this can grow pretty large for large files
 	parts := []*Part{}
 
-	f, err := os.Open(p)
+	fh, err := os.Open(p)
 	if err != nil {
-		return parts, errwrap.Wrapf("Failed to open file '%s' for splitting: {{err}}", err, p)
+		return errwrap.Wrapf("Failed to open file '%s' for splitting: {{err}}", err, p)
 	}
 
-	defer f.Close()
-
-	//@todo we want to split large files further into subtrees to
-	//prevent the overhead of keeping track of parts
+	defer fh.Close()
 
 	//buffer and sum each byte
 	sha := sha1.New()
-	buff := bufio.NewReader(f)
+	buff := bufio.NewReader(fh)
 	rs := NewRollsum()
 	pos := int64(0)
 	last := pos
-	fanout := 4
 	for {
 		b, err := buff.ReadByte()
 		if err != nil {
 			if err == io.EOF {
 				if pos != last {
-					parts = append(parts, &Part{start: last, end: pos, hash: sha.Sum(nil)})
+					part := &Part{start: last, end: pos, hash: sha.Sum(nil)}
+					s.Printf("found last part of %s (%x)", fi.Name(), part.hash)
+					s.Nodes <- part
+					parts = append(parts, part)
 				}
 				break
 			} else {
-				return parts, errwrap.Wrapf("Failed to read byte from file '%s': {{err}}", err, p)
+				return errwrap.Wrapf("Failed to read byte from file '%s': {{err}}", err, p)
 			}
 		}
 
 		_, err = sha.Write([]byte{b})
 		if err != nil {
-			return parts, errwrap.Wrapf("Failed to write byte to hash: {{err}}", err)
+			return errwrap.Wrapf("Failed to write byte to hash: {{err}}", err)
 		}
 
 		pos++
@@ -168,32 +168,16 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 		rs.Roll(b)
 		if rs.OnSplit() {
 			bits := rs.Bits()
+
+			//@todo, don't store pointers
+			//to sub parts, only hash keys
 			var sub []*Part
-
-			//at this point the lower 13 bits are equal, check for fanout
-			if bits == (splitOnes + fanout) {
-				s.Println("fanout", bits)
-			}
-
-			// [0.0]   4759  (13)
-			// [0.1]   13549 (13)
-			// [0.2]   24111 (13)
-			// [0.3]   25549 (13)
-			// [0.4]   27582 (13)
-			// [0.5]   32703 (13)
-			// [0] 34749 (19) <- not lower then 17
-			// [1.0.1] 43733 (13)
-			// [1.0.2] 47322 (13)
-			// [1.0] 47499 (16) <- lower then 17
-			// [1] 54922 (17)
-			// [2]
 
 			//@todo the logic below N last parts into
 			//into the last Part if the number of 1's
 			//a tree of parts that allows efficient
-			//storage of part lists, we are still looking
-			//for a way to send (sub)part nodes when they are
-			//formed and not store them in memory
+			//storage of part lists. Do we want a 'fanout'
+			//approach that better matches bups method
 			from := len(parts)
 			for from > 0 && parts[from-1].bits < bits {
 				from--
@@ -210,6 +194,16 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 				parts = parts[:from]
 			}
 
+			//at this point sub parts are definite,
+			//so we include their hashes in the hash
+			//of the current part's hash
+			for _, s := range sub {
+				_, err := sha.Write(s.hash)
+				if err != nil {
+					return errwrap.Wrapf("Failed to write sub-part hash to current part hash: {{err}}", err)
+				}
+			}
+
 			//create the new part
 			part := &Part{
 				bits:  bits,
@@ -219,18 +213,22 @@ func (s *Scanner) SplitFile(p string, fi os.FileInfo) ([]*Part, error) {
 				sub:   sub,
 			}
 
+			s.Printf("found part of %s (%x), sub-parts: %d", fi.Name(), part.hash, len(sub))
+			s.Nodes <- part
+
 			parts = append(parts, part)
 			sha.Reset()
 			last = pos
 		}
 	}
 
-	for i, part := range parts {
-		s.Printf("found part %d of %s (%x)", i, fi.Name(), part.hash)
-		s.Nodes <- part
+	//add top level parts of the split as links
+	//to the file
+	for _, part := range parts {
+		f.parts = append(f.parts, part.hash)
 	}
 
-	return parts, nil
+	return nil
 }
 
 // (re)scan the root directory, recursively calling
@@ -284,30 +282,11 @@ func (s *Scanner) scanDir(dirp string) (*Dir, error) {
 
 		} else {
 			//it is a file, split into parts and create file
-			parts, err := s.SplitFile(path, fi)
+			f := &File{}
+			err := s.SplitFile(f, path, fi)
 			if err != nil {
 				return nil, err
 			}
-
-			f := &File{}
-			for _, part := range parts {
-				f.parts = append(f.parts, part.hash)
-			}
-
-			//
-			// @todo remove me
-			//
-			var dumpSpans func(s []*Part, indent int)
-			dumpSpans = func(parts []*Part, indent int) {
-				in := strings.Repeat(" ", indent)
-				for _, sp := range parts {
-					s.Printf("%sstart=%d, end=%d (len %d) bits=%d\n", in, sp.start, sp.end, sp.end-sp.start, sp.bits)
-					if len(sp.sub) > 0 {
-						dumpSpans(sp.sub, indent+4)
-					}
-				}
-			}
-			dumpSpans(parts, 0)
 
 			err = f.calcHash()
 			if err != nil {

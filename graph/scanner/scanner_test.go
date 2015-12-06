@@ -74,7 +74,7 @@ func writeFileAt(t *testing.T, p string, data []byte, pos int64) {
 	}
 }
 
-func TestBottomsUpIndexing(t *testing.T) {
+func TestScan(t *testing.T) {
 	dir, err := ioutil.TempDir("", "box_test_")
 	assert.NoError(t, err, "Creating temporary directory should not fail")
 	l := log.New(os.Stderr, "graph/fs: ", log.Ltime|log.Lmicroseconds)
@@ -91,7 +91,8 @@ func TestBottomsUpIndexing(t *testing.T) {
 
 			//we expect 8 nodes: 3dirs, 2files, 3parts
 			nodes[fmt.Sprintf("%x", n.Key())] = n
-			if len(nodes) == 11 {
+			log.Printf("A: %x", n.Key())
+			if len(nodes) == 20 {
 				done <- true
 				return
 			}
@@ -102,16 +103,30 @@ func TestBottomsUpIndexing(t *testing.T) {
 	assert.NoError(t, err, "Scanning the filesystem should not fail")
 
 	<-done
-	assert.Len(t, nodes, 11, "Expected N nodes after file edit")
+	assert.Len(t, nodes, 20, "Expected N nodes after file edit")
 
-	//we expect the following nodes from the scanner
+	//we expect the following nodes from the first scan
 	exp := []string{
-		"a67316b4de11d37d722e7da5768d7d22220c2b89",
-		"e025982956d87909188cd8b76699711478347de6",
-		"104c9da6a7654229304fd77f4479751070453613",
-		"8b2a5d310e80ad144819786e36ca4733e26939c9",
-
-		//@todo assert large file existence
+		"05a82b3c331c68f097b0151dafe016ac6d7a05f0", // /
+		"8b2a5d310e80ad144819786e36ca4733e26939c9", // +-/a
+		"104c9da6a7654229304fd77f4479751070453613", //    +-/b
+		"e025982956d87909188cd8b76699711478347de6", //       +-/small_file
+		"a67316b4de11d37d722e7da5768d7d22220c2b89", //         +-.1 (last part)
+		"3bd1b79ca92f423b6c54943e3ffc2f47bd349059", // +-/large_file
+		"7b2f18510ef8919ec40a1084b4215e5008fdcd63", //   +-.1
+		"a9713219f8ddbb7b07102798812456b659c7dd8b", //     +-.1
+		"c8f9d95c38323d0ced6d6f4347aeb216bd952fc3", //     +-.2
+		"68b4872687de1307293529b54b1304d8bc9752f3", //     +-.3
+		"4e510ea21ba1686b3cae35ac4d70b146acb9ecea", //     +-.4
+		"10e127809e3a524df036eff4a57a1f8f0a487f1f", //     +-.5
+		"0c2be78762d41f24231c83067d19d8f505d0c3d4", //     +-.6
+		"09caed6d1d68a045d4ac8900fd2c342124adfa6c", //   +-.2
+		"b153af3ed57a87fa17bcd96a537767cf9132ef40", //     +-.1
+		"300317a09449cf1ce0064f6c6483a8ff8facf316", //       +-.1
+		"5cc88fded228359d87580c1c1c5f9fcd5812dcf2", //       +-.2
+		"d1871116f30bf0ae8e610dff3a94470dcce2f811", //   +-.3
+		"717cbf439a773491fda1d80784a93bd87f3973c0", //   +-.4
+		"2a8b53c4798a72b2f84156031d281fbe2578902b", //   +-.5 (last part)
 	}
 	for _, k := range exp {
 		if _, ok := nodes[k]; !ok {
