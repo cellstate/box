@@ -15,10 +15,6 @@ limitations under the License.
 
 package scanner
 
-import (
-	"log"
-)
-
 const charOffset = 31            // something other then 0 (apparently a prime), improves checksum algo
 const splitOnes = 13             // how many 1's as lower bits of the sum we consider a split
 const splitSize = 1 << splitOnes // 2^13 = 8192 bytes on average
@@ -51,13 +47,7 @@ func (rs *RollSum) Roll(ch byte) {
 
 //returns true when the lowest bits of the
 func (rs *RollSum) OnSplit() bool {
-
-	res := (rs.s2 & (splitSize - 1)) == ((^0) & (splitSize - 1))
-	if res == true {
-		log.Printf("%b (%d): %t", rs.s2, splitSize, res)
-	}
-
-	return res
+	return (rs.s2 & (splitSize - 1)) == ((^0) & (splitSize - 1))
 }
 
 //How many ones in the lower bits of the sum
